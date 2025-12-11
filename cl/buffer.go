@@ -24,6 +24,7 @@ package cl
 #cgo linux LDFLAGS: -lOpenCL
 #cgo windows LDFLAGS: -lOpenCL
 #cgo darwin LDFLAGS: -framework OpenCL
+#cgo CFLAGS: -DCL_TARGET_OPENCL_VERSION=300
 
 #ifdef MAC
 	#include "OpenCL/cl.h"

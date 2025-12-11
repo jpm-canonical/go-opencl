@@ -35,6 +35,7 @@ package cl
 import "C"
 
 import (
+	"fmt"
 	"unsafe"
 )
 
@@ -141,6 +142,7 @@ const (
 	DEVICE_VENDOR_ID        DeviceProperty = C.CL_DEVICE_VENDOR_ID
 	DEVICE_VERSION          DeviceProperty = C.CL_DEVICE_VERSION
 	DRIVER_VERSION          DeviceProperty = C.CL_DRIVER_VERSION
+	DEVICE_PCI_BUS_INFO_KHR DeviceProperty = C.CL_DEVICE_PCI_BUS_INFO_KHR
 )
 
 type Device struct {
@@ -275,6 +277,11 @@ func (d *Device) Property(prop DeviceProperty) interface{} {
 		}
 		data = buf
 
+	case DEVICE_PCI_BUS_INFO_KHR:
+		var val DevicePciBusInfo
+		ret = C.clGetDeviceInfo(d.id, C.cl_device_info(prop), C.size_t(unsafe.Sizeof(val)), unsafe.Pointer(&val), &length)
+		data = val
+
 	default:
 		return nil
 	}
@@ -284,4 +291,55 @@ func (d *Device) Property(prop DeviceProperty) interface{} {
 	}
 	d.properties[prop] = data
 	return d.properties[prop]
+}
+
+type DevicePciBusInfo struct {
+	Domain   uint32
+	Bus      uint32
+	Device   uint32
+	Function uint32
+}
+
+func NewDevicePciBusInfo(cStruct C.cl_device_pci_bus_info_khr) DevicePciBusInfo {
+	return DevicePciBusInfo{
+		Domain:   uint32(cStruct.pci_domain),
+		Bus:      uint32(cStruct.pci_bus),
+		Device:   uint32(cStruct.pci_device),
+		Function: uint32(cStruct.pci_function),
+	}
+}
+
+func (d *Device) BusInfo() (DevicePciBusInfo, error) {
+	// Assume 'raw' comes from your OpenCL call
+	var raw C.cl_device_pci_bus_info_khr
+	var length C.size_t
+	var ret C.cl_int
+
+	ret = C.clGetDeviceInfo(d.id, C.cl_device_info(DEVICE_PCI_BUS_INFO_KHR), C.size_t(unsafe.Sizeof(raw)), unsafe.Pointer(&raw), &length)
+
+	if ret != C.CL_SUCCESS {
+		return DevicePciBusInfo{}, fmt.Errorf("failed to look up bus info: %d", ret)
+	}
+
+	// Convert it once
+	info := NewDevicePciBusInfo(raw)
+	return info, nil
+}
+
+func (d *Device) GlobalMemory() (uint64, error) {
+	var val C.cl_ulong
+	var length C.size_t
+
+	ret := C.clGetDeviceInfo(
+		d.id,
+		C.cl_device_info(DEVICE_GLOBAL_MEM_SIZE),
+		C.size_t(unsafe.Sizeof(val)),
+		unsafe.Pointer(&val),
+		&length)
+	if ret != C.CL_SUCCESS {
+		return 0, fmt.Errorf("failed to look up global memory: %d", ret)
+	}
+	var memory uint64
+	memory = uint64(C.ulong(val))
+	return memory, nil
 }

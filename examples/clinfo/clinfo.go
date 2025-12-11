@@ -19,7 +19,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/mathuin/go-opencl/cl"
+	"strings"
+
+	"go-opencl/cl"
 )
 
 func main() {
@@ -113,6 +115,30 @@ func main() {
 			fmt.Println("  Profile:", device.Property(cl.DEVICE_PROFILE))
 			fmt.Println("  Version:", device.Property(cl.DEVICE_VERSION))
 			fmt.Println("  Extensions:", device.Property(cl.DEVICE_EXTENSIONS))
+
+			// Global memory
+			globalMemory, err := device.GlobalMemory()
+			if err != nil {
+				fmt.Println("  Error getting global memory:", err)
+			} else {
+				fmt.Println("  Global memory size:", globalMemory)
+			}
+
+			// Print PCI bus info if cl_khr_pci_bus_info is available
+			ext := device.Property(cl.DEVICE_EXTENSIONS)
+			if extStr, ok := ext.(string); ok && (extStr != "") && (extStr != " ") && (extStr != "\n") {
+				if strings.Contains(extStr, "cl_khr_pci_bus_info") {
+					busInfo, err := device.BusInfo()
+					if err != nil {
+						fmt.Println("  Error getting bus info:", err)
+					} else {
+						fmt.Printf("  PCI Domain: %v\n", busInfo.Domain)
+						fmt.Printf("  PCI Bus: %v\n", busInfo.Bus)
+						fmt.Printf("  PCI Device: %v\n", busInfo.Device)
+						fmt.Printf("  PCI Function: %v\n", busInfo.Function)
+					}
+				}
+			}
 		}
 	}
 }

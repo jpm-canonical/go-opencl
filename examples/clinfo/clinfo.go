@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"strings"
 
-	"go-opencl/cl"
+	"github.com/jpm-canonical/go-opencl/cl"
 )
 
 func main() {
